@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suivi de stats LoL</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f3f1ea;--card:#fff;--fg:#0f1b2d;--mut:#5b6678;--bd:#d9d4c4;--ac:#0b6e8a;--gold:#8a6a1f;--danger:#b23a3a;--grid:#e4e0d2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1428;--card:#101e36;--fg:#eae4d2;--mut:#93a0b5;--bd:#26365a;--ac:#0ac8b9;--gold:#c8aa6e;--danger:#e0716f;--grid:#1c2c4b}}
+:root[data-theme="dark"]{--bg:#0a1428;--card:#101e36;--fg:#eae4d2;--mut:#93a0b5;--bd:#26365a;--ac:#0ac8b9;--gold:#c8aa6e;--danger:#e0716f;--grid:#1c2c4b}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "Retroica","Trebuchet MS",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+h1,h2{font-family:"Retroica","Trebuchet MS",system-ui,sans-serif;font-weight:700;color:var(--gold);margin:0}
+h1{font-size:30px;line-height:1.2;margin-bottom:4px}
+h2{font-size:22px}
+h2:focus{outline:none}
+.sub{color:var(--mut);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:16px;margin-bottom:16px}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+label{font-size:13px;color:var(--mut);display:block;margin-bottom:2px}
+input,select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:7px 9px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+button{cursor:pointer}
+button.pri{background:var(--ac);border-color:var(--ac);color:#04121a;font-weight:700}
+button.del{padding:2px 8px;color:var(--mut)}
+button.del.arm{color:#fff;background:var(--danger);border-color:var(--danger)}
+.menu{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:8px}
+.menu button{text-align:left;padding:22px 20px;background:var(--card);border:1px solid var(--bd);border-radius:10px;display:block}
+.menu button:hover{border-color:var(--gold)}
+.menu b{display:block;font-size:20px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.menu span{color:var(--mut);font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.row>div{flex:1 1 110px;min-width:90px}
+.row input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--bd);border-radius:999px;padding:2px 4px 2px 12px;background:var(--bg)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:480px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap}
+th:first-child,td:first-child,.note{text-align:left}
+th.s{cursor:pointer;user-select:none;color:var(--mut);font-weight:700}
+th.s:hover,th.on{color:var(--gold)}
+.empty{color:var(--mut);padding:16px 0;text-align:center}
+.ck{display:inline-flex;align-items:center;gap:6px;margin:0 16px 8px 0;font-size:14px}
+.ck input[type=checkbox]{padding:0;width:auto}
+.ck input[type=color]{padding:0;width:30px;height:26px;cursor:pointer}
+.ck label{display:inline;margin:0;color:var(--fg);font-size:14px}
+.cw{position:relative;height:340px;margin-top:10px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+
+<div id="v-home">
+<h1>Suivi de stats League of Legends</h1>
+<p class="sub">Choisis ce que tu veux faire. Les données restent dans ce navigateur.</p>
+<div class="menu">
+<button data-go="new"><b>Nouvelle partie</b><span>Ajouter une partie et gérer tes catégories de stats</span></button>
+<button data-go="list"><b>Parties enregistrées</b><span id="m-count"></span></button>
+<button data-go="chart"><b>Graphiques</b><span>Courbes et nuages de points, couleurs au choix</span></button>
+</div>
+</div>
+
+<section id="v-new" hidden>
+<div class="bar"><button data-go="home">← Menu</button><h2 tabindex="-1">Nouvelle partie</h2></div>
+<div class="row" id="form"></div>
+<div class="row" style="margin-top:10px">
+<div style="flex:2 1 200px"><label for="f-note">Note (champion, contexte…)</label><input id="f-note" type="text" placeholder="ex. Ahri mid, victoire"></div>
+<div><label for="f-date">Date</label><input id="f-date" type="datetime-local"></div>
+<div style="flex:0 0 auto"><button class="pri" id="add">Ajouter la partie</button></div>
+</div>
+<p class="sub" id="ok" style="margin:10px 0 0" hidden>Partie ajoutée.</p>
+<div class="chips" id="cats"></div>
+<div class="row" style="margin-top:10px">
+<div style="flex:1 1 200px"><label for="newcat">Nouvelle catégorie de stat</label><input id="newcat" type="text" placeholder="ex. Dégâts subis/min"></div>
+<div style="flex:0 0 auto"><button id="addcat">Ajouter la catégorie</button></div>
+</div>
+<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--bd)">
+<h2 style="font-size:18px">Importer depuis Riot</h2>
+<p class="sub" style="margin:4px 0 10px">Choisis le fichier <b>nouvelles_parties.json</b> produit par le script, ou colle son contenu. Les parties déjà importées sont ignorées.</p>
+<div class="row">
+<div style="flex:0 0 auto"><input id="imp-file" type="file" accept=".json,application/json" aria-label="Fichier nouvelles_parties.json"></div>
+</div>
+<div style="margin-top:10px"><label for="imp-txt">Contenu du fichier</label><textarea id="imp-txt" rows="4" style="width:100%;font:13px monospace;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:7px 9px"></textarea></div>
+<div class="row" style="margin-top:10px"><div style="flex:0 0 auto"><button class="pri" id="imp-go">Importer les parties</button></div></div>
+<p class="sub" id="imp-msg" style="margin:10px 0 0" hidden></p>
+</div>
+</section>
+
+<section id="v-list" hidden>
+<div class="bar"><button data-go="home">← Menu</button><h2 tabindex="-1">Parties enregistrées</h2><span class="sub" id="count" style="margin:0 0 0 auto"></span></div>
+<div class="tw"><table id="tbl"></table></div>
+</section>
+
+<section id="v-chart" hidden>
+<div class="bar"><button data-go="home">← Menu</button><h2 tabindex="-1">Graphiques</h2></div>
+<div class="row">
+<div style="flex:0 1 220px"><label for="xsel">Axe horizontal</label><select id="xsel" style="width:100%"></select></div>
+<div style="flex:2 1 260px"><label>Stats à afficher et leur couleur</label><div id="ysel"></div></div>
+</div>
+<div class="ck" style="margin-top:6px"><input type="checkbox" id="norm"><label for="norm">Normaliser (échelle 0 à 1, pour comparer des stats d'ordres de grandeur différents)</label></div>
+<div class="cw"><canvas id="cv"></canvas></div>
+<p class="empty" id="cvmsg" hidden></p>
+</section>
+
+</main>
+
+<script>
+const KEY='lol-tracker-v1';
+const DEF=['KDA','GD@15','CS/min','KP%','EXP@15','G/m','DMG/m','VS/m','CS@15'];
+let S={v:2,cats:[...DEF],entries:[],colors:{}};
+try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);if(p&&Array.isArray(p.cats)&&Array.isArray(p.entries)){S=p;S.colors=S.colors||{};
+  if(!S.v){DEF.forEach(c=>{if(!S.cats.includes(c)){S.cats.push(c);S.entries.forEach(e=>e.vals[c]=null)}});S.v=2}}}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const COL=['#0ac8b9','#c8aa6e','#e0716f','#7aa2ff','#b58cff','#8fd16b','#ffa94d','#f06595','#4dd0e1','#d4e157'];
+let view='home',sort={k:'date',dir:-1},xk='date',selY=new Set(S.cats),ch=null,armed=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const colOf=c=>S.colors[c]||COL[S.cats.indexOf(c)%COL.length];
+const fmtD=iso=>new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+const num=v=>{v=String(v).trim().replace(',','.');if(v==='')return null;const n=parseFloat(v);return isNaN(n)?null:n};
+const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+if(window.Chart)Chart.defaults.font.family='"Retroica","Trebuchet MS",system-ui,sans-serif';
+
+function show(v){
+  view=v;armed=null;
+  ['home','new','list','chart'].forEach(n=>$('v-'+n).hidden=n!==v);
+  if(v==='home')$('m-count').textContent=S.entries.length+' partie'+(S.entries.length>1?'s':'')+' enregistrée'+(S.entries.length>1?'s':'')+', tri par date ou par stat';
+  if(v==='new'){renderForm();renderCats();$('ok').hidden=true;$('imp-msg').hidden=true}
+  if(v==='list')renderTable();
+  if(v==='chart'){renderChartControls();renderChart()}
+  window.scrollTo(0,0);
+  const h=v==='home'?null:$('v-'+v).querySelector('h2');if(h)h.focus();
+}
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');if(g){show(g.dataset.go);return}
+  if(armed&&!e.target.closest('.del')){armed=null;if(view==='new')renderCats();if(view==='list')renderTable()}
+});
+
+function renderForm(){
+  $('form').innerHTML=S.cats.map((c,i)=>`<div><label for="f-${i}">${esc(c)}</label><input id="f-${i}" type="text" inputmode="decimal" placeholder="0"></div>`).join('')||'<p class="empty">Ajoute une catégorie pour commencer.</p>';
+  $('f-date').value=nowLocal();
+}
+function renderCats(){
+  $('cats').innerHTML='<span style="color:var(--mut);font-size:13px">Catégories :</span>'+S.cats.map((c,i)=>`<span class="chip">${esc(c)}<button class="del ${armed==='c'+i?'arm':''}" data-c="${i}" aria-label="Supprimer ${esc(c)}">${armed==='c'+i?'Confirmer ?':'✕'}</button></span>`).join('');
+}
+function renderTable(){
+  const cols=['date',...S.cats];
+  const list=[...S.entries].sort((a,b)=>{
+    let x,y;
+    if(sort.k==='date'){return (+new Date(a.date)-+new Date(b.date))*sort.dir}
+    x=a.vals[sort.k];y=b.vals[sort.k];
+    if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;
+    return (x-y)*sort.dir});
+  $('count').textContent=S.entries.length+' partie'+(S.entries.length>1?'s':'');
+  if(!list.length){$('tbl').innerHTML='<tbody><tr><td class="empty" colspan="9">Aucune partie pour l\'instant. Ouvre « Nouvelle partie » depuis le menu pour ajouter la première.</td></tr></tbody>';return}
+  const arrow=k=>sort.k===k?(sort.dir>0?' ▲':' ▼'):'';
+  $('tbl').innerHTML='<thead><tr>'+cols.map((c,i)=>`<th class="s ${sort.k===(i?c:'date')?'on':''}" data-k="${i?esc(c):'date'}" tabindex="0">${i?esc(c):'Date'}${arrow(i?c:'date')}</th>`).join('')+'<th style="text-align:left">Note</th><th></th></tr></thead><tbody>'+
+  list.map(e=>`<tr><td>${fmtD(e.date)}</td>${S.cats.map(c=>`<td>${e.vals[c]==null?'–':e.vals[c]}</td>`).join('')}<td class="note">${esc(e.note||'')}</td><td><button class="del ${armed==='e'+e.id?'arm':''}" data-e="${e.id}" aria-label="Supprimer la partie">${armed==='e'+e.id?'Confirmer ?':'✕'}</button></td></tr>`).join('')+'</tbody>';
+}
+function renderChartControls(){
+  if(xk!=='date'&&!S.cats.includes(xk))xk='date';
+  $('xsel').innerHTML='<option value="date">Date</option>'+S.cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  $('xsel').value=xk;
+  $('ysel').innerHTML=S.cats.map((c,i)=>c===xk?'':`<span class="ck"><input type="checkbox" id="y-${i}" data-y="${esc(c)}" ${selY.has(c)?'checked':''}><input type="color" data-col="${esc(c)}" value="${colOf(c)}" aria-label="Couleur de ${esc(c)}"><label for="y-${i}">${esc(c)}</label></span>`).join('')||'<span class="sub">Aucune stat disponible.</span>';
+}
+function renderChart(){
+  if(ch){ch.destroy();ch=null}
+  if(view!=='chart')return;
+  const ys=S.cats.filter(c=>c!==xk&&selY.has(c));
+  const msg=$('cvmsg'),norm=$('norm').checked;
+  const sets=ys.map(c=>{
+    let pts=S.entries.map(e=>({x:xk==='date'?+new Date(e.date):e.vals[xk],y:e.vals[c]})).filter(p=>p.x!=null&&p.y!=null).sort((a,b)=>a.x-b.x);
+    if(norm&&pts.length){const lo=Math.min(...pts.map(p=>p.y)),hi=Math.max(...pts.map(p=>p.y));pts=pts.map(p=>({x:p.x,y:hi===lo?0.5:(p.y-lo)/(hi-lo),raw:p.y}))}
+    return{label:c,data:pts,borderColor:colOf(c),backgroundColor:colOf(c),showLine:xk==='date',tension:.25,pointRadius:4,borderWidth:2}});
+  const has=sets.some(s=>s.data.length);
+  msg.hidden=has;
+  if(!has){msg.textContent=ys.length?'Pas encore de données à tracer avec ces choix.':'Coche au moins une stat à afficher.';return}
+  const cs=getComputedStyle(document.documentElement);
+  const tc=cs.getPropertyValue('--mut').trim()||'#888',gc=cs.getPropertyValue('--grid').trim()||'#ddd';
+  ch=new Chart($('cv'),{type:'scatter',data:{datasets:sets},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:tc}},tooltip:{callbacks:{
+      title:it=>xk==='date'?fmtD(it[0].parsed.x):xk+' : '+it[0].parsed.x,
+      label:c=>{const p=c.raw;return c.dataset.label+' : '+(p.raw!==undefined?p.raw:p.y)}}}},
+    scales:{x:{type:'linear',title:{display:true,text:xk==='date'?'Date':xk,color:tc},ticks:{color:tc,callback:v=>xk==='date'?new Date(v).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):v},grid:{color:gc}},
+            y:{title:{display:true,text:norm?'Valeur normalisée':'Valeur',color:tc},ticks:{color:tc},grid:{color:gc}}}}});
+}
+
+$('add').onclick=()=>{
+  const vals={};let any=false;
+  S.cats.forEach((c,i)=>{const v=num($('f-'+i).value);vals[c]=v;if(v!=null)any=true});
+  if(!any){const f=$('f-0');if(f)f.focus();return}
+  const d=$('f-date').value?new Date($('f-date').value):new Date();
+  S.entries.push({id:Date.now()+Math.floor(Math.random()*1000),date:d.toISOString(),vals,note:$('f-note').value.trim()});
+  save();$('f-note').value='';renderForm();$('ok').hidden=false;
+};
+$('addcat').onclick=()=>{
+  const n=$('newcat').value.trim();
+  if(!n||S.cats.includes(n))return;
+  S.cats.push(n);selY.add(n);S.entries.forEach(e=>e.vals[n]=null);
+  save();$('newcat').value='';renderForm();renderCats();
+};
+$('newcat').onkeydown=e=>{if(e.key==='Enter')$('addcat').click()};
+$('cats').onclick=e=>{
+  const b=e.target.closest('[data-c]');if(!b)return;
+  const i=+b.dataset.c,k='c'+i;
+  if(armed!==k){armed=k;renderCats();return}
+  const c=S.cats[i];S.cats.splice(i,1);selY.delete(c);delete S.colors[c];S.entries.forEach(x=>delete x.vals[c]);armed=null;save();renderForm();renderCats();
+};
+$('tbl').onclick=e=>{
+  const th=e.target.closest('th[data-k]');
+  if(th){const k=th.dataset.k;sort=sort.k===k?{k,dir:-sort.dir}:{k,dir:-1};armed=null;renderTable();return}
+  const b=e.target.closest('[data-e]');if(!b)return;
+  const k='e'+b.dataset.e;
+  if(armed!==k){armed=k;renderTable();return}
+  S.entries=S.entries.filter(x=>String(x.id)!==b.dataset.e);armed=null;save();renderTable();
+};
+$('tbl').onkeydown=e=>{if(e.key==='Enter'){const th=e.target.closest('th[data-k]');if(th)th.click()}};
+$('xsel').onchange=e=>{xk=e.target.value;renderChartControls();renderChart()};
+$('ysel').onchange=e=>{const c=e.target.dataset.y;if(c===undefined)return;e.target.checked?selY.add(c):selY.delete(c);renderChart()};
+$('ysel').oninput=e=>{const c=e.target.dataset.col;if(c===undefined)return;S.colors[c]=e.target.value;save();renderChart()};
+$('imp-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('imp-txt').value=String(r.result)};r.readAsText(f)};
+$('imp-go').onclick=()=>{
+  const m=$('imp-msg');m.hidden=false;
+  let arr;
+  try{arr=JSON.parse($('imp-txt').value)}catch(err){m.textContent="Le contenu n'est pas un JSON valide. Choisis le fichier nouvelles_parties.json ou colle-le en entier.";return}
+  if(!Array.isArray(arr)){m.textContent='Format inattendu : il faut une liste de parties.';return}
+  const seen=new Set(S.entries.map(x=>x.mid).filter(Boolean));
+  let add=0,skip=0;
+  arr.forEach(p=>{
+    if(!p||!p.date||!p.vals||typeof p.vals!=='object'||isNaN(new Date(p.date))){skip++;return}
+    if(p.mid&&seen.has(p.mid)){skip++;return}
+    Object.keys(p.vals).forEach(c=>{if(!S.cats.includes(c)){S.cats.push(c);selY.add(c);S.entries.forEach(x=>x.vals[c]=null)}});
+    const vals={};S.cats.forEach(c=>{const v=p.vals[c];vals[c]=typeof v==='number'&&isFinite(v)?v:null});
+    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e6),mid:p.mid||null,date:new Date(p.date).toISOString(),vals,note:String(p.note||'')});
+    if(p.mid)seen.add(p.mid);add++;
+  });
+  save();renderForm();renderCats();
+  m.textContent=add+(add>1?' parties importées':' partie importée')+(skip?', '+skip+(skip>1?' ignorées':' ignorée')+' (déjà présentes ou invalides)':'')+'.';
+  if(add)$('imp-txt').value='';
+};
+$('norm').onchange=renderChart;
+show('home');
+</script>
+</body>
+</html>
